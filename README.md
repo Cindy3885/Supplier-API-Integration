@@ -6,7 +6,7 @@
 
 ## 1. Introduction
 
-This repository documents a supplier API integration project focused on retrieving product information from Promo Africa, processing the returned data and preparing it for import into Shopify.
+This repository documents a supplier API integration project focused on retrieving product information from a South African supplier, processing the returned data and preparing it for import into Shopify.
 
 The project involved working with structured JSON data, developing a PowerShell conversion script, mapping supplier product information and testing the resulting products and variants in a separate Shopify development store.
 
@@ -41,7 +41,7 @@ Rather than treating the task as a straightforward data transfer, the project in
 
 The main objectives were to:
 
-1. Connect to the Promo Africa supplier API and retrieve product information.
+1. Connect to the supplier API and retrieve product information.
 2. Examine the returned JSON data and understand its structure.
 3. Develop a PowerShell script to process the supplier data.
 4. Identify and map the relevant product information.
@@ -60,11 +60,12 @@ The project involved the following technologies and platforms:
 
 | Technology / Platform | Purpose |
 |---|---|
-| Promo Africa API | Source of supplier product information |
+| Supplier API | Source of supplier product information |
 | JSON | Structured format used for the supplier data |
 | PowerShell | Processing and conversion of JSON product data |
 | Shopify | Destination e-commerce platform |
 | Shopify development store | Environment used to test product imports |
+| Postman | API request testing and inspection of supplier API responses |
 
 The implementation focused on using the supplier's existing JSON response and processing it directly through PowerShell.
 
@@ -114,7 +115,7 @@ The initial integration workflow consisted of retrieving supplier data, processi
 ### High-level workflow
 
 ```text
-PROMO AFRICA API
+SUPPLIER API
        |
        v
 SUPPLIER PRODUCT DATA
@@ -148,7 +149,7 @@ PRODUCT IMPORT AND VALIDATION
 
 **1. Supplier data retrieval**
 
-Product information was requested from the Promo Africa API.
+Product information was requested from the supplier API.
 
 **2. JSON data handling**
 
@@ -174,7 +175,7 @@ The imported products, variants and images were checked in the development envir
 
 ## 7. Supplier API Connection
 
-The first technical stage involved connecting to the Promo Africa API and retrieving supplier product information.
+The first technical stage involved connecting to the supplier API and retrieving supplier product information.
 
 ### 7.1 API response
 
@@ -562,7 +563,7 @@ The intended workflow would allow supplier product information to be retrieved, 
 ### 17.1 Proposed workflow
 
 ```text
-PROMO AFRICA API
+SUPPLIER API
        |
        v
 AUTHENTICATED API REQUEST
@@ -910,7 +911,7 @@ The next development stage is to extend the tested import workflow into a proper
 
 ## 24. Conclusion
 
-This project explored the integration of supplier product information with Shopify using the Promo Africa API, JSON and PowerShell.
+This project explored the integration of supplier product information with Shopify using the supplier API, JSON and PowerShell.
 
 The development work covered API data retrieval, JSON examination, product-data conversion, variant mapping and Shopify development-store testing.
 
