@@ -1,926 +1,470 @@
+
 # Supplier API Integration
 
-**Supplier Product Data Integration | Promo Africa API | PowerShell | JSON | Shopify**
+**Supplier Product Feed → Data Extraction & Transformation → Shopify Admin API → Inventory Update**
+
+A practical API integration project demonstrating how supplier product and stock data can be retrieved, processed, mapped to Shopify product variants, and used to update inventory through the Shopify GraphQL Admin API.
+
+This project documents the integration workflow, data preparation, variant mapping, API testing, inventory update process, validation and results.
 
 ---
 
-## 1. Introduction
+## Project Overview
 
-This repository documents a supplier API integration project focused on retrieving product information from a South African supplier, processing the returned data and preparing it for import into Shopify.
+The objective was to connect an external supplier API to a Shopify development store and demonstrate a working data flow between the two systems.
 
-The project involved working with structured JSON data, developing a PowerShell conversion script, mapping supplier product information and testing the resulting products and variants in a separate Shopify development store.
+The project focused on one selected product rather than attempting to import an entire supplier catalogue.
 
-The development testing successfully imported:
+The integration involved:
 
-- 10 products
-- 88 product variants
-- Product images
-- Products saved as drafts
+- Authenticating with a supplier API.
+- Retrieving supplier product feed data.
+- Extracting a specific product from a larger JSON response.
+- Processing product, image, variant and stock information.
+- Matching supplier colour and size combinations to Shopify variants.
+- Retrieving Shopify inventory item identifiers.
+- Updating Shopify inventory using a GraphQL mutation.
+- Validating the API response and checking the result inside Shopify.
 
-The project demonstrates practical experience in API data retrieval, JSON data processing, product-data mapping, scripting and e-commerce integration.
+**Result:** A successful inventory update was completed in Shopify for 114 product variants using supplier-feed quantity data.
 
-The work represents a development-stage implementation. A complete live supplier-to-Shopify synchronisation process remains future work.
-
----
-
-## 2. Project Background
-
-The project originated from the need to transfer supplier product information into Shopify more efficiently.
-
-Manually capturing products, descriptions, pricing, sizes, variants and images can become time-consuming, particularly when dealing with large supplier catalogues or products with multiple variants.
-
-The objective was to investigate how supplier information could be retrieved directly through an API and transformed into a format suitable for Shopify.
-
-The work required understanding both the supplier's data structure and the information Shopify needed to create products correctly.
-
-Rather than treating the task as a straightforward data transfer, the project involved examining the source data, identifying the relevant fields, resolving mapping differences and testing the resulting product information.
-
----
-
-## 3. Project Objectives
-
-The main objectives were to:
-
-1. Connect to the supplier API and retrieve product information.
-2. Examine the returned JSON data and understand its structure.
-3. Develop a PowerShell script to process the supplier data.
-4. Identify and map the relevant product information.
-5. Process product variants and size information correctly.
-6. Prepare the converted information for Shopify.
-7. Test the import using a separate Shopify development store.
-8. Identify the additional requirements for a complete automated integration.
-
-The broader objective was to establish a practical foundation for reducing repetitive manual product capture and creating a more efficient supplier-to-e-commerce data workflow.
-
----
-
-## 4. Technologies and Tools
-
-The project involved the following technologies and platforms:
-
-| Technology / Platform | Purpose |
-|---|---|
-| Supplier API | Source of supplier product information |
-| JSON | Structured format used for the supplier data |
-| PowerShell | Processing and conversion of JSON product data |
-| Shopify | Destination e-commerce platform |
-| Shopify development store | Environment used to test product imports |
-| Postman | API request testing and inspection of supplier API responses |
-
-The implementation focused on using the supplier's existing JSON response and processing it directly through PowerShell.
-
-No intermediate CSV conversion stage was used in the original workflow.
-
----
-
-## 5. Project Scope
-
-### 5.1 Work completed
-
-The following work was carried out:
-
-- Connected to the supplier API.
-- Retrieved structured product information.
-- Received successful HTTP 200 responses during API testing.
-- Worked with the original JSON data files.
-- Examined product and variant data structures.
-- Developed a PowerShell converter.
-- Identified and corrected a nested size-field mapping issue.
-- Handled stock-size information separately.
-- Created a separate Shopify development environment.
-- Successfully tested the import of 10 products and 88 variants.
-- Confirmed that product images were included in the test import.
-- Saved the imported products as drafts.
-
-### 5.2 Remaining development
-
-The following areas were not completed as part of the demonstrated development test:
-
-- Full live-store authentication and connection verification.
-- Complete automated supplier-to-Shopify synchronisation.
-- Scheduled product updates.
-- Automated stock and pricing updates.
-- Ongoing synchronisation of existing products.
-- Production-level duplicate handling and error recovery.
-- Full production deployment and monitoring.
-
-These items are identified as future development rather than completed functionality.
-
----
-
-## 6. Integration Overview
-
-The initial integration workflow consisted of retrieving supplier data, processing the JSON files, converting the relevant product information and using the resulting data for a Shopify development import.
-
-### High-level workflow
+## Integration Architecture
 
 ```text
-SUPPLIER API
-       |
-       v
-SUPPLIER PRODUCT DATA
-       |
-       v
-JSON RESPONSE
-       |
-       v
-ORIGINAL JSON FILES
-       |
-       v
-POWERSHELL CONVERTER
-       |
-       v
+EXTERNAL SUPPLIER API
+        |
+        | Customer authentication
+        |
+        v
+SUPPLIER PRODUCT FEED
+        |
+        | JSON response
+        |
+        v
 PRODUCT DATA EXTRACTION
-       |
-       v
-PRODUCT AND VARIANT MAPPING
-       |
-       v
-SHOPIFY-READY PRODUCT DATA
-       |
-       v
-SHOPIFY DEVELOPMENT STORE
-       |
-       v
-PRODUCT IMPORT AND VALIDATION
+        |
+        | Selected product record
+        | Product information
+        | Images
+        | Colour and size data
+        | Stock records
+        |
+        v
+DATA PROCESSING & MAPPING
+        |
+        | Match colour and size combinations
+        | Validate variant records
+        | Prepare Shopify inventory data
+        |
+        v
+SHOPIFY GRAPHQL ADMIN API
+        |
+        | Retrieve product variants
+        | Retrieve inventory item IDs
+        | Submit inventory mutation
+        |
+        v
+SHOPIFY INVENTORY
+        |
+        | 114 variants updated
+        |
+        v
+VALIDATION & RESULTS
 ```
 
-### Workflow explanation
+## Technologies and Tools
 
-**1. Supplier data retrieval**
+| Technology / Tool | Purpose |
+|---|---|
+| Supplier REST API | Source of product and stock information |
+| JSON | Product and inventory data format |
+| Postman | API requests, authentication, testing and response inspection |
+| PowerShell | Data extraction, processing and JSON handling |
+| Shopify Admin API | Communication with Shopify |
+| GraphQL | Shopify product and inventory operations |
+| Shopify development store | Testing and verifying the integration |
 
-Product information was requested from the supplier API.
+## 1. Supplier API Authentication
 
-**2. JSON data handling**
+The first stage was establishing an authenticated connection to the supplier API.
 
-The returned JSON data was retained and used as the source for the conversion process.
+A customer login request was submitted using:
 
-**3. Data processing**
+`POST /api/customer/login`
 
-A PowerShell script was developed to read and process the supplier's product information.
+The authentication response was used to obtain the access credentials required for subsequent supplier API requests.
 
-**4. Product mapping**
+The authentication process was tested in Postman.
 
-Relevant product and variant fields were identified and mapped for Shopify.
+**Authentication result:** Successful.
 
-**5. Development import**
+Sensitive authentication information, including passwords, access tokens and API credentials, is deliberately excluded from this repository.
 
-The processed information was used in a Shopify development-store import test.
+## 2. Retrieving Supplier Product Data
 
-**6. Validation**
+After authentication, the supplier product feed was retrieved using:
 
-The imported products, variants and images were checked in the development environment.
+`GET /api/product/feed`
 
----
+The feed returned product information in JSON format.
 
-## 7. Supplier API Connection
+The original response contained a large catalogue, making it impractical to process the entire response repeatedly during development.
 
-The first technical stage involved connecting to the supplier API and retrieving supplier product information.
+Instead, a selected product was extracted into a smaller JSON file for focused processing and integration testing.
 
-### 7.1 API response
+This allowed the integration to work with a manageable dataset without repeatedly downloading or processing the complete supplier catalogue.
 
-The API returned structured product data in JSON format.
+## 3. Product Data Extraction
 
-During testing, the request returned an HTTP 200 response, indicating that the request was successfully processed by the API.
+A selected product record was extracted from the supplier feed.
 
-### 7.2 Retrieved information
+The extracted product contained:
 
-The returned data contained product information that could be examined and processed for the Shopify import workflow.
-
-The relevant information included product details and associated variant data.
-
-The structure of the returned JSON needed to be understood before the conversion logic could be developed.
-
-### 7.3 API testing
-
-The API connection and returned response formed the starting point for the integration process.
-
-Evidence of the original API request and response can be added to the repository after the relevant files and screenshots have been reviewed and sanitised.
-
-API credentials, access tokens and confidential information must never be included in the public repository.
-
----
-
-## 8. JSON Data Examination
-
-The supplier API returned product information in JSON format. The original JSON files were used directly during development.
-
-### 8.1 Understanding the data structure
-
-Before converting the information, it was necessary to examine how the supplier organised its product records.
-
-This included identifying:
-
-- Product-level information.
-- Product descriptions and attributes.
-- Pricing information.
-- Variant information.
-- Size values.
-- Stock-related information.
-- Product image references.
-
-### 8.2 Nested fields
-
-Some information was stored within nested JSON objects rather than directly at the top level of a product record.
-
-This meant that the conversion process needed to identify the correct field paths when extracting information.
-
-A practical example was the size-mapping issue, where the required value was located in a nested field rather than the initially assumed field.
-
-### 8.3 Data preparation
-
-The JSON structure was used as the basis for the PowerShell conversion process.
-
-The objective was to extract the relevant supplier information and prepare it for mapping into the Shopify product structure.
-
-### 8.4 Data integrity
-
-The original supplier data was retained as the source for processing.
-
-Any sample JSON files published in this repository should be sanitised to remove confidential supplier information and other private data.
-
----
-
-## 9. PowerShell Data Converter
-
-A PowerShell converter was developed to process the supplier's JSON product data and prepare the information for the Shopify import workflow.
-
-The purpose of the script was to extract relevant information from the supplier's data structure and convert it into a format that could be used for product creation.
-
-### 9.1 Reading JSON data
-
-The converter worked with the original JSON files retrieved from the supplier API.
-
-PowerShell provided the ability to read the structured data and access the product information contained within the JSON objects.
-
-### 9.2 Processing product information
-
-The script was developed to process the supplier product records and identify the information required for the import.
-
-This involved working with product-level fields and related variant information.
-
-### 9.3 Preparing data for Shopify
-
-The supplier's field structure did not necessarily correspond directly with Shopify's product structure.
-
-The converter therefore needed to account for differences in field names, data organisation and nested values.
-
-The resulting data was prepared for use in the Shopify import process.
-
-### 9.4 Development and verification
-
-The converted information was used in the successful development-store import test.
-
-The original PowerShell script will be included in this repository once it has been reviewed to confirm its contents and remove any private information.
-
----
-
-## 10. Product Data Mapping
-
-An important part of the integration was identifying how supplier product information needed to be mapped for Shopify.
-
-The supplier API provided the source information, but the data needed to be interpreted and organised according to the destination platform's requirements.
-
-### 10.1 Mapping considerations
-
-The conversion process involved examining information such as:
-
-- Product identifiers and codes.
-- Product titles and descriptions.
-- Product attributes.
-- Pricing information.
+- Product code and description.
+- Product information.
 - Product images.
-- Variant details.
+- Colour information.
 - Size information.
-- Stock-related values.
+- Variant-related data.
+- Stock records.
+- Pricing quantity information.
 
-### 10.2 Source and destination differences
+The extracted JSON file was approximately 334 KB.
 
-Supplier systems and e-commerce platforms may represent the same information differently.
+The original full supplier response was approximately 49 MB.
 
-For example, a supplier may store an attribute inside a nested object, while the destination platform expects that value as part of a product or variant record.
+This extraction step significantly reduced the amount of data required for testing.
 
-The mapping process therefore required an understanding of the source data rather than relying only on field names.
+### Selected product data
 
-### 10.3 Mapping accuracy
+| Field | Result |
+|---|---|
+| Product | Kiddies Crew Neck T-shirt, Fitted Long Sleeve |
+| Supplier product code | +27KCNFLSBPR |
+| Product images | 19 |
+| Stock records | 228 |
+| Unique colour-size combinations | 114 |
+| Available sizes | 6 |
+| Available colours | 19 |
 
-Incorrect mapping can result in incomplete product information, incorrect variant options or information being assigned to the wrong field.
+## 4. Understanding the Supplier Stock Structure
 
-The development process included examining the returned data and correcting mapping logic where the initial assumptions did not match the actual JSON structure.
+One important part of the integration was identifying how the supplier represented stock.
 
----
+The extracted product contained 228 stock records.
 
-## 11. Variant and Size Mapping
+However, these did not represent 228 separate colour-size combinations.
 
-Product variants required additional attention because a single product could have multiple options or sizes.
+The supplier returned two material records for each colour-size combination:
 
-The supplier's variant information needed to be interpreted correctly so that the resulting Shopify products contained the appropriate variant structure.
+- 140g Birdseye
+- 140g Reverse Birdseye
 
-### 11.1 Identifying variant information
+This resulted in:
 
-The JSON data was examined to identify how product variants and their associated attributes were represented.
+**228 supplier stock records ÷ 2 material records = 114 unique colour-size combinations.**
 
-The conversion process needed to distinguish between information belonging to the overall product and information belonging to an individual variant.
+The product contained:
 
-### 11.2 Size-field mapping issue
+- 19 colours.
+- 6 sizes.
+- 114 unique colour-size combinations.
 
-During development, a size-mapping issue was identified.
+The integration therefore needed to distinguish between the supplier's 228 stock records and Shopify's 114 product variants.
 
-The relevant size value was not stored in the field initially expected. It was located within the nested field:
+This was an important data-mapping consideration. Simply treating every supplier stock record as a separate Shopify variant would have produced an incorrect mapping.
 
-```text
-size.code
-```
+### Colour data
 
-The mapping logic was corrected to use the appropriate field.
+The extracted product included the following colours:
 
-This was an important correction because using the wrong field could result in missing or incorrect size information when creating Shopify variants.
+White, Royal Blue, Yellow, Hi-Viz Yellow, Maroon, Lime, Emerald Green, Brown, Charcoal, Red, Black, Sky Blue, Hi-Viz Lime, Hi-Viz Orange, Grey, Bottle Green, Gold, Orange and Navy.
 
-### 11.3 Stock-size handling
+### Size data
 
-Stock-size information also required separate consideration.
+- 3–4
+- 5–6
+- 7–8
+- 9–10
+- 11–12
+- 13–14
 
-The size assigned to a product variant and the stock information associated with that size serve different purposes.
+## 5. Shopify Product and Variant Preparation
 
-The conversion process therefore needed to account for these distinctions rather than treating all size-related values as interchangeable.
+The selected product was prepared in a Shopify development store.
 
-### 11.4 Variant testing
+The integration used Shopify's GraphQL Admin API.
 
-The successful Shopify development import included 88 variants across 10 products.
+The Shopify product was configured with:
 
-This provided a practical test of the product and variant data prepared through the conversion workflow.
+- 19 colour options.
+- 6 size options.
+- 114 product variants.
+- Inventory tracking enabled.
+- Inventory levels associated with the selected Shopify location.
+- Product images uploaded.
 
----
+The Shopify product was retained as a **Draft** during testing.
 
-## 12. Shopify Development Environment
+Publishing the product was not required to demonstrate the API integration.
 
-A separate Shopify development store was created to test the product import process.
+Retail pricing and product publication were outside the scope of the inventory update.
 
-This was necessary because the development work could not be carried out directly in the original partner store.
+## 6. Shopify Variant Identification and Mapping
 
-Using a separate environment provided a way to test the converted product information without making changes to the original store.
+Before inventory could be updated, the integration needed to identify the Shopify inventory item associated with each variant.
 
-### 12.1 Development-store purpose
+Shopify uses unique identifiers for products, variants and inventory items.
 
-The development store was used to:
+The relevant inventory item IDs were retrieved through the Shopify GraphQL Admin API.
 
-- Test the prepared product data.
-- Import products and their variants.
-- Check whether product images were included.
-- Inspect the resulting product records.
-- Review the imported variant information.
-- Keep development testing separate from the original store.
+The supplier colour-size combinations were then matched against the Shopify variants.
 
-### 12.2 Test environment
+The mapping process needed to account for:
 
-The development store provided a controlled environment for validating the initial import workflow.
+1. Supplier colour values.
+2. Supplier size values.
+3. Duplicate material stock records.
+4. Shopify variant identifiers.
+5. Shopify inventory item identifiers.
+6. The selected Shopify inventory location.
 
-The successful import demonstrated that the converted product information could be used to create Shopify products and variants.
+The resulting inventory update dataset contained 114 unique Shopify variants.
 
-### 12.3 Separation from production
+This stage was essential because Shopify inventory updates operate on inventory item identifiers and location identifiers, not simply on product names or descriptions.
 
-The development store was used for testing purposes.
+## 7. Shopify Inventory Update
 
-The successful test should not be interpreted as confirmation that the original partner store was connected for live synchronisation or that a production deployment had taken place.
+The final integration step used Shopify's GraphQL Admin API mutation:
 
----
+`inventorySetQuantities`
 
-## 13. Shopify Product Import
+The mutation submitted inventory quantities for the selected variants.
 
-The converted supplier data was used in a development-store import test.
+The request used:
 
-The test successfully created products and their associated variants in Shopify.
+- Inventory quantity name: `available`
+- Adjustment reason: `correction`
+- Inventory location: selected Shopify location
+- Quantity source: extracted supplier feed
+- Number of variants submitted: 114
 
-### 13.1 Import results
+The request used `ignoreCompareQuantity: true` for this test operation.
 
-The development test produced the following results:
+The purpose was to demonstrate that the supplier-derived inventory data could be submitted to Shopify and applied to the corresponding inventory items.
 
-| Import result | Quantity / Status |
+### Important quantity clarification
+
+The supplier feed returned a quantity value of `99999` for the stock records used in this test.
+
+That value was passed through to the Shopify inventory update.
+
+It should be understood as the quantity supplied by the feed, not as independently verified physical stock held by the supplier.
+
+A production implementation should establish what this value means with the supplier before treating it as an accurate stock-on-hand figure.
+
+## 8. API Response and Validation
+
+The final inventory mutation was executed successfully.
+
+The Postman Visualizer displayed the following results:
+
+| Validation item | Result |
 |---|---:|
-| Products imported | 10 |
-| Variants imported | 88 |
-| Product images | Included |
-| Product status | Draft |
+| HTTP status | 200 |
+| Variants submitted | 114 |
+| Supplier feed quantity | 99,999 |
+| GraphQL errors | 0 |
+| Shopify user errors | 0 |
+| Changes returned | 228 |
 
-### 13.2 Product creation
+### Understanding the 228 returned changes
 
-The imported records appeared in the Shopify development store as products.
+The response returned 228 inventory adjustment entries.
 
-The test demonstrated that the prepared supplier information could be used to create Shopify product records.
+These represented two quantity changes for each of the 114 variants:
 
-### 13.3 Variant creation
+- 114 `available` changes.
+- 114 `on_hand` changes.
 
-The import also included the associated product variants.
+Therefore, the response did not represent 228 separate product variants.
 
-A total of 88 variants were imported across the 10 products tested.
+It represented 228 inventory adjustment entries across 114 variants.
 
-### 13.4 Product images
+### Independent Shopify verification
 
-Product images were included in the development import.
+Following the successful API response, the inventory was checked in the Shopify Admin interface.
 
-This was an important part of the test because product information in an e-commerce catalogue needs to include more than descriptions and pricing.
+The inventory update was visible in Shopify.
 
-### 13.5 Draft status
+This confirmed that the submitted inventory changes had been applied in the development store.
 
-The imported products were saved as drafts.
+The mutation response also contained no GraphQL errors or Shopify user errors.
 
-This allowed the imported information to be inspected in the development environment without publishing the products as active listings.
+## 9. Final Project Results
 
----
+The project successfully demonstrated the following:
 
-## 14. Testing and Validation
+- Supplier API authentication.
+- Retrieval of supplier product feed data.
+- Extraction of an individual product from a larger JSON catalogue.
+- Processing of product information and images.
+- Identification of supplier stock records.
+- Recognition of duplicate material records.
+- Mapping of 114 unique colour-size combinations.
+- Retrieval of Shopify inventory item identifiers.
+- Submission of inventory quantities through Shopify GraphQL.
+- Successful API response with HTTP 200.
+- Zero GraphQL errors.
+- Zero Shopify user errors.
+- Verification of the inventory update inside Shopify.
 
-Testing was carried out to establish whether the supplier data could be processed and used to create products in Shopify.
+<details>
+<summary>Project result summary</summary>
 
-The development import provided a practical way to assess the results of the conversion process.
+**Supplier data processed:** 1 selected product
 
-### 14.1 API response validation
+**Supplier stock records:** 228
 
-The supplier API request returned a successful HTTP 200 response during testing.
+**Unique Shopify variants:** 114
 
-This confirmed that the API request successfully returned data.
+**Inventory adjustment entries returned:** 228
 
-### 14.2 Data-processing validation
+**HTTP response:** 200
 
-The original JSON files were used by the PowerShell conversion workflow.
+**GraphQL errors:** 0
 
-The product and variant information was examined and processed for the import.
+**Shopify user errors:** 0
 
-### 14.3 Mapping validation
+**Shopify inventory update:** Successfully verified
 
-The size-mapping issue identified during development was corrected to use the relevant nested field.
+</details>
 
-This demonstrated the importance of validating the actual source-data structure rather than assuming that a particular field contained the required value.
+## 10. Challenges and Technical Considerations
 
-### 14.4 Shopify import validation
+Several practical challenges were encountered during the integration.
 
-The development-store test successfully imported:
+### Large supplier feed
 
-- 10 products.
-- 88 variants.
-- Product images.
+The original supplier feed was approximately 49 MB.
 
-The products were saved as drafts for inspection.
+Repeatedly retrieving and processing the complete catalogue created unnecessary processing overhead.
 
-### 14.5 Testing limitations
+**Approach:** Extracting a single product record into a smaller JSON file made testing more manageable.
 
-The successful import demonstrated the initial product-data conversion and import workflow for the tested sample.
+### Supplier and Shopify data structures
 
-It did not establish that every possible supplier product structure had been tested or that all future synchronisation scenarios were covered.
+The supplier's 228 stock records did not correspond directly to Shopify's 114 variants.
 
-Additional testing would be required for larger product sets, updates to existing products, stock changes, pricing changes, missing information and API errors.
+**Approach:** Identifying the two material records associated with each colour-size combination made it possible to prepare the correct number of Shopify variant mappings.
 
----
+### Inventory item identification
 
-## 15. Challenges and Technical Considerations
+Shopify inventory operations require inventory item IDs and location IDs.
 
-The development process involved several practical considerations associated with integrating two systems that organise product information differently.
+**Approach:** Retrieving the Shopify identifiers before submitting the inventory mutation ensured that the update targeted the intended inventory records.
 
-### 15.1 Understanding supplier data
+### API response validation
 
-The supplier's JSON structure needed to be examined before reliable mapping logic could be developed.
+A successful HTTP response alone does not guarantee that every operation inside a GraphQL request succeeded.
 
-The presence of nested fields meant that the correct location of each required value had to be established.
+**Approach:** The final response was checked for both GraphQL errors and Shopify user errors. The resulting inventory was also verified directly in Shopify.
 
-### 15.2 Variant complexity
+### Inventory quantity interpretation
 
-Products with multiple sizes or other variant options require careful handling.
+The supplier feed returned `99999` as the quantity value.
 
-The conversion process needed to distinguish between product-level information and variant-level information.
+**Approach:** The value was documented as supplier-feed data rather than assumed to be verified physical inventory.
 
-### 15.3 Correct field selection
+## 11. Current Scope and Future Improvements
 
-The size-mapping issue demonstrated how selecting an incorrect field could affect the resulting Shopify product data.
+The completed project demonstrates a successful supplier-feed-driven inventory update.
 
-Identifying the correct nested field and correcting the mapping logic was an important part of the development work.
+It is important to distinguish this from a fully automated, continuously running integration.
 
-### 15.4 Stock information
+The current demonstration involved a manually initiated workflow and a successful inventory update for one selected product.
 
-Stock-related values and size information required separate consideration.
+The following improvements would be appropriate for a production-ready implementation:
 
-A future synchronisation process would need to establish how supplier stock quantities correspond to the correct Shopify variants and inventory records.
+- Automated scheduled supplier feed retrieval.
+- Incremental updates instead of processing an entire catalogue.
+- Supplier stock quantity validation.
+- Clear handling of duplicate material records.
+- More comprehensive colour and size matching rules.
+- Inventory comparison before updates.
+- Error logging and retry handling.
+- Protection against accidental inventory overwrites.
+- Monitoring and reporting of failed updates.
+- Automated synchronisation across multiple products.
+- Secure deployment and credential management.
 
-### 15.5 Development versus live integration
+For production use, inventory updates should use suitable quantity comparison controls rather than automatically overwriting quantities without checking whether stock has changed since the last read.
 
-Testing in a separate Shopify development store provided a controlled environment for the initial import.
+## 12. Security and Data Handling
 
-A production integration requires additional authentication, permissions, update logic and safeguards before it can be used to modify a live product catalogue.
+This repository is intended to demonstrate the integration process without exposing private supplier or store information.
 
----
+The following information must not be committed to GitHub:
 
-## 16. Current Limitations and Future Development
+- Supplier passwords.
+- Supplier access tokens.
+- Shopify Admin API access tokens.
+- Private API credentials.
+- Customer information.
+- Private supplier catalogue data.
+- Sensitive store configuration.
 
-The project established a working foundation for retrieving, processing and importing supplier product information.
+Credentials should be stored in secure environment variables or an appropriate secrets manager.
 
-However, the successful development import represents an initial integration stage rather than a complete automated synchronisation solution.
+The demonstration documentation intentionally uses generic descriptions for the external supplier and client.
 
-The following areas remain for further development.
+## 13. Evidence and Screenshots
 
-### 16.1 Shopify authentication
+Screenshots can be added to a `screenshots` folder to document the completed workflow.
 
-Complete and verify the Shopify application authentication process and the permissions required for the intended integration.
+Recommended evidence:
 
-### 16.2 Repeatable API retrieval
+1. Supplier API authentication response showing successful authentication, with sensitive information hidden.
+2. Supplier product feed request showing a successful response.
+3. Extracted product JSON showing the selected product and stock structure.
+4. Postman response showing the Shopify variants and inventory item mapping.
+5. Final Postman Visualizer showing HTTP 200, 114 variants submitted and zero errors.
+6. Shopify Admin inventory screen showing the updated inventory.
 
-Develop a repeatable process for retrieving supplier product data without relying on manually managed source files.
-
-### 16.3 Existing-product updates
-
-Extend the workflow to identify products that already exist in Shopify and update their information where appropriate, rather than creating duplicates.
-
-### 16.4 Pricing synchronisation
-
-Develop and test reliable updates for supplier pricing, including validation of the values being transferred.
-
-### 16.5 Stock synchronisation
-
-Establish and test how supplier stock information should be mapped to the correct Shopify product variants and inventory records.
-
-### 16.6 Variant and image updates
-
-Extend testing to cover changes to existing variants, product options and image information.
-
-### 16.7 Error handling and logging
-
-Introduce structured error handling and logging to help identify failed API requests, invalid data, mapping problems and unsuccessful Shopify operations.
-
-### 16.8 Scheduled synchronisation
-
-Investigate a scheduled process that can retrieve supplier updates and apply approved changes to Shopify at defined intervals.
-
-### 16.9 Production testing
-
-Once authentication, mapping and update functionality have been verified, conduct controlled testing against the authorised original Shopify store before considering production use.
-
----
-
-## 17. Future Integration Workflow
-
-The next stage of development is to extend the initial product import workflow into a repeatable supplier-to-Shopify integration.
-
-The intended workflow would allow supplier product information to be retrieved, processed, validated and used to create or update Shopify products.
-
-### 17.1 Proposed workflow
-
-```text
-SUPPLIER API
-       |
-       v
-AUTHENTICATED API REQUEST
-       |
-       v
-RETRIEVE LATEST PRODUCT DATA
-       |
-       v
-PROCESS JSON RESPONSE
-       |
-       v
-VALIDATE PRODUCT INFORMATION
-       |
-       v
-MAP PRODUCTS AND VARIANTS
-       |
-       v
-IDENTIFY EXISTING PRODUCTS
-       |
-       v
-CREATE NEW PRODUCTS
-       |
-       v
-UPDATE EXISTING PRODUCTS
-       |
-       v
-UPDATE PRICES AND STOCK
-       |
-       v
-LOG RESULTS AND ERRORS
-       |
-       v
-SHOPIFY PRODUCT CATALOGUE
-```
-
-### 17.2 Proposed functionality
-
-Further development could introduce:
-
-- Automated retrieval of supplier product information.
-- Validation of incoming product records.
-- Product matching and duplicate prevention.
-- Creation of new Shopify products.
-- Updating of existing product information.
-- Variant and size synchronisation.
-- Pricing updates.
-- Stock-level updates.
-- Image updates.
-- Error reporting and activity logs.
-- Scheduled synchronisation.
-
-These capabilities represent the intended direction of development and are not claimed as completed functionality.
-
----
-
-## 18. Data Mapping Documentation
-
-Data mapping documentation will be important for maintaining and extending the integration.
-
-It will provide a reference showing how information from the supplier's JSON structure corresponds to the fields required by Shopify.
-
-### 18.1 Proposed mapping reference
-
-The following table identifies the main information categories that need to be documented.
-
-| Data category | Source | Destination |
-|---|---|---|
-| Product identifier | Supplier product data | Shopify product matching |
-| Product title | Supplier product data | Shopify product title |
-| Product description | Supplier product data | Shopify product description |
-| Product images | Supplier image information | Shopify product media |
-| Product pricing | Supplier pricing data | Shopify product or variant pricing |
-| Variant information | Supplier variant data | Shopify product variants |
-| Size information | Nested supplier size data | Shopify variant options |
-| Stock information | Supplier stock data | Shopify inventory |
-
-The exact source field names, destination fields and transformation rules should be confirmed against the original JSON files and the implementation code before being documented as final mappings.
-
-### 18.2 Why mapping documentation matters
-
-Maintaining a clear mapping reference helps to:
-
-- Explain how supplier information is transformed.
-- Identify where individual values originate.
-- Reduce incorrect field assignments.
-- Support troubleshooting.
-- Make future changes easier to manage.
-- Provide a reference for additional supplier products and variants.
-
-A separate `data-mapping.md` document can be maintained in the repository as the mapping is verified.
-
----
-
-## 19. Repository Structure
-
-The repository is intended to organise the integration scripts, sanitised sample data, technical documentation and supporting evidence in one place.
-
-The proposed structure is:
+Suggested repository structure:
 
 ```text
 Supplier-API-Integration/
 │
 ├── README.md
 │
-├── scripts/
-│ ├── powershell-converter.ps1
-│ └── additional-scripts.ps1
-│
-├── data/
-│ ├── sample-product-data.json
-│ ├── sample-variant-data.json
-│ └── additional-sanitised-json.json
-│
-├── postman/
-│ └── supplier-api-collection.json
-│
-├── documentation/
-│ ├── data-mapping.md
-│ ├── technical-workflow.md
-│ └── testing-results.md
-│
-├── screenshots/
-│ ├── api/
-│ ├── json/
-│ ├── powershell/
-│ ├── shopify/
-│ └── application/
-│
-└── diagrams/
-    └── integration-workflow.png
+└── screenshots/
+    ├── supplier-authentication.png
+    ├── supplier-product-feed.png
+    ├── extracted-product-data.png
+    ├── shopify-variant-mapping.png
+    ├── inventory-update-result.png
+    └── shopify-inventory-verification.png
 ```
 
-### 19.1 Repository contents
+Only add screenshots that have actually been captured. Sensitive credentials and private supplier information should be concealed before uploading.
 
-**README.md**
+## 14. Project Summary
 
-Provides an overview of the project, implementation, testing, current limitations and future development.
+This project demonstrates a practical integration between an external supplier API and Shopify.
 
-**scripts/**
+It covers more than simply retrieving an API response. The work involved understanding the supplier's JSON structure, extracting relevant product information, identifying duplicate stock records, matching supplier data to Shopify variants, retrieving inventory identifiers and submitting inventory changes through Shopify's GraphQL Admin API.
 
-Contains the PowerShell converter and any additional scripts included in the project.
+The successful update of 114 Shopify variants demonstrates that supplier-derived data can be processed and transferred into a separate e-commerce platform through an API integration workflow.
 
-**data/**
+**Project status:** Successful inventory update demonstrated for one selected product.
 
-Contains sanitised sample JSON files that demonstrate the supplier data structure.
-
-**postman/**
-
-Can contain a Postman collection for reproducing and documenting API requests, once the request configuration has been verified.
-
-**documentation/**
-
-Contains supporting technical documentation, data mapping references and testing results.
-
-**screenshots/**
-
-Contains selected screenshots demonstrating the development and testing process.
-
-**diagrams/**
-
-Contains visual representations of the integration workflow.
-
-This is the intended repository layout. Files should only be added once they have been collected, reviewed and prepared for publication.
+**Automation status:** Manual execution demonstrated; recurring automated synchronisation is not yet implemented.
 
 ---
 
-## 20. Testing Evidence and Screenshots
 
-Supporting evidence will be used to demonstrate the work carried out during development.
 
-The objective is to show the actual implementation and its results rather than relying only on written descriptions.
+Project concept, workflow planning, data mapping, API testing, integration validation and documentation.
 
-### 20.1 API evidence
 
-Potential evidence includes:
-
-- API request configuration.
-- Successful HTTP 200 response.
-- Returned JSON response.
-- Example supplier product record.
-
-### 20.2 JSON evidence
-
-Potential evidence includes:
-
-- Original JSON file opened in an editor.
-- Example product record.
-- Nested variant information.
-- Relevant size and stock fields.
-
-### 20.3 PowerShell evidence
-
-Potential evidence includes:
-
-- PowerShell converter source code.
-- JSON-reading and processing logic.
-- Product and variant mapping logic.
-- Relevant execution output.
-
-### 20.4 Shopify evidence
-
-Potential evidence includes:
-
-- Shopify development-store product list.
-- An imported product record.
-- Product images.
-- Product variant information.
-- Draft product status.
-- Evidence of the 10-product and 88-variant import.
-
-### 20.5 Evidence standards
-
-All screenshots and sample files must be genuine and taken from the actual development work.
-
-Before publication:
-
-- Remove API credentials and access tokens.
-- Hide private application configuration.
-- Remove confidential supplier information.
-- Avoid exposing private store details.
-- Use sanitised sample data where necessary.
-
-Evidence should clearly distinguish the successful development import from functionality that remains outstanding.
-
----
-
-## 21. Security and Data Protection
-
-API integrations involve credentials, supplier information and access to external platforms.
-
-Security must therefore be considered throughout development and when publishing the project publicly.
-
-### 21.1 Credential protection
-
-API keys, access tokens, passwords and other authentication details must never be committed to a public GitHub repository.
-
-Sensitive values should be stored securely and kept separate from publicly accessible scripts and documentation.
-
-### 21.2 Supplier data
-
-Supplier product information should be reviewed before publication.
-
-Only information suitable for public demonstration should be included in sample files.
-
-### 21.3 Shopify access
-
-Shopify application credentials, access tokens and private store information must remain confidential.
-
-Application configuration screenshots must be checked carefully before being added to the repository.
-
-### 21.4 Public repository checks
-
-Before publishing or updating the repository:
-
-- Review all scripts for embedded credentials.
-- Inspect JSON files for private information.
-- Check screenshots for exposed tokens or account details.
-- Remove private store identifiers where appropriate.
-- Confirm that sample data is safe to publish.
-
-The repository should demonstrate the technical work without exposing confidential business information.
-
----
-
-## 22. Skills Demonstrated
-
-This project demonstrates practical experience across several areas of data handling, scripting and e-commerce integration.
-
-### API integration
-
-- Connecting to a supplier API.
-- Retrieving structured product information.
-- Understanding API responses.
-- Working with successful HTTP responses.
-
-### JSON data handling
-
-- Examining structured JSON data.
-- Understanding nested objects and fields.
-- Identifying product and variant information.
-- Extracting relevant data for further processing.
-
-### PowerShell scripting
-
-- Developing a data conversion script.
-- Reading and processing JSON files.
-- Working with structured product records.
-- Implementing data transformation and mapping logic.
-
-### E-commerce integration
-
-- Understanding Shopify product structures.
-- Preparing product information for import.
-- Working with product variants.
-- Testing product images and draft products.
-- Identifying requirements for future synchronisation.
-
-### Problem-solving
-
-- Investigating differences between supplier and destination data structures.
-- Identifying incorrect field assumptions.
-- Correcting nested size-field mapping.
-- Considering stock and variant relationships.
-- Validating the resulting imported products.
-
-### Technical documentation
-
-- Documenting an integration workflow.
-- Identifying implementation limitations.
-- Separating completed work from future development.
-- Organising technical evidence and supporting files.
-
----
-
-## 23. Project Outcomes
-
-The project established a practical foundation for integrating supplier product information with Shopify.
-
-The development work demonstrated that supplier product data could be retrieved through an API, processed using PowerShell and prepared for a Shopify product import.
-
-### Demonstrated results
-
-| Outcome | Result |
-|---|---|
-| Supplier API access | Successfully tested |
-| API response | HTTP 200 received |
-| Source data | Original JSON files |
-| Conversion tool | PowerShell converter developed |
-| Size mapping | Nested-field issue identified and corrected |
-| Shopify development import | Successful |
-| Products imported | 10 |
-| Variants imported | 88 |
-| Product images | Included |
-| Product status | Draft |
-
-### Practical value
-
-The work demonstrated an approach to reducing repetitive product-data capture by using supplier data as the source for product creation.
-
-It also provided practical experience in identifying data-structure differences, resolving mapping issues and validating imported information in an e-commerce environment.
-
-The next development stage is to extend the tested import workflow into a properly authenticated and repeatable synchronisation process.
-
----
-
-## 24. Conclusion
-
-This project explored the integration of supplier product information with Shopify using the supplier API, JSON and PowerShell.
-
-The development work covered API data retrieval, JSON examination, product-data conversion, variant mapping and Shopify development-store testing.
-
-The successful import of 10 products and 88 variants, including product images, demonstrated that the initial data-processing and import workflow could produce usable Shopify product records.
-
-The project also highlighted practical considerations involved in integrating different systems, particularly the importance of understanding nested data structures and correctly mapping product and variant information.
-
-Although the initial development test was successful, the complete live supplier-to-Shopify synchronisation process remains to be implemented and verified.
-
-The repository documents the work completed, the results demonstrated and the remaining development requirements.
-
----
